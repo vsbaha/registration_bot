@@ -29,6 +29,9 @@ dp = Dispatcher()
 class RegistrationStates(StatesGroup):
     choosing_curator = State()
     entering_fio = State()
+    entering_pharmacy_name = State()
+    entering_pharmacy_number = State()
+    choosing_position = State()
     entering_inn = State()
     getting_phone = State()
     uploading_passport_front = State()
@@ -66,6 +69,11 @@ async def cmd_start(message: types.Message, state: FSMContext):
     await message.answer(welcome_text, reply_markup=get_curators_keyboard())
     await state.set_state(RegistrationStates.choosing_curator)
 
+@dp.message(Command("cancel"))
+async def cmd_cancel(message: types.Message, state: FSMContext):
+    """Обработка команды /cancel для отмены регистрации"""
+    await state.clear()
+    await message.answer("Регистрация отменена. Вы можете начать заново с команды /start.")
 
 # Обработчик выбора куратора
 @dp.message(RegistrationStates.choosing_curator)
@@ -111,9 +119,120 @@ async def process_fio(message: types.Message, state: FSMContext):
     if data.get('passport_front_file_id'):  # Если уже были загружены фото
         await show_review_screen(message, state)
     else:
-        inn_request_text = FIO_CONFIRMED.format(fio=fio)
+        pharmacy_request_text = FIO_CONFIRMED.format(fio=fio)
         
-        await message.answer(inn_request_text)
+        await message.answer(pharmacy_request_text)
+        await state.set_state(RegistrationStates.entering_pharmacy_name)
+
+
+# Обработчик ввода названия аптеки
+@dp.message(RegistrationStates.entering_pharmacy_name)
+async def process_pharmacy_name(message: types.Message, state: FSMContext):
+    """Обработка ввода названия аптеки"""
+    pharmacy_name = message.text.strip()
+    
+    if not pharmacy_name or len(pharmacy_name) < 2:
+        await message.answer(PHARMACY_NAME_INVALID)
+        return
+    
+    await state.update_data(pharmacy_name=pharmacy_name)
+    logger.info(f"Название аптеки сохранено: {pharmacy_name}")
+    
+    # Проверяем, редактируем ли мы данные
+    data = await state.get_data()
+    if data.get('passport_front_file_id'):  # Если уже были загружены фото
+        await show_review_screen(message, state)
+    else:
+        pharmacy_number_request_text = PHARMACY_NAME_CONFIRMED.format(pharmacy_name=pharmacy_name)
+        
+        await message.answer(pharmacy_number_request_text)
+        await state.set_state(RegistrationStates.entering_pharmacy_number)
+
+
+# Обработчик ввода номера аптеки
+@dp.message(RegistrationStates.entering_pharmacy_number)
+async def process_pharmacy_number(message: types.Message, state: FSMContext):
+    """Обработка ввода номера аптеки"""
+    pharmacy_number = message.text.strip()
+    
+    if not pharmacy_number:
+        await message.answer(PHARMACY_NUMBER_INVALID)
+        return
+    
+    await state.update_data(pharmacy_number=pharmacy_number)
+    logger.info(f"Номер аптеки сохранен: {pharmacy_number}")
+    
+    # Проверяем, редактируем ли мы данные
+    data = await state.get_data()
+    if data.get('passport_front_file_id'):  # Если уже были загружены фото
+        await show_review_screen(message, state)
+    else:
+        position_request_text = PHARMACY_NUMBER_CONFIRMED.format(pharmacy_number=pharmacy_number)
+        
+        # Создание клавиатуры с выбором должности
+        position_keyboard = ReplyKeyboardMarkup(
+            keyboard=[
+                [KeyboardButton(text=BUTTON_POSITION_MANAGER)],
+                [KeyboardButton(text=BUTTON_POSITION_PHARMACIST)],
+                [KeyboardButton(text=BUTTON_POSITION_MANUAL)]
+            ],
+            resize_keyboard=True,
+            one_time_keyboard=True
+        )
+        
+        await message.answer(position_request_text, reply_markup=position_keyboard)
+        await state.set_state(RegistrationStates.choosing_position)
+
+
+# Обработчик выбора должности
+@dp.message(RegistrationStates.choosing_position)
+async def process_position(message: types.Message, state: FSMContext):
+    """Обработка выбора должности"""
+    position_input = message.text.strip()
+    
+    # Проверяем, нажал ли кнопку ручного ввода
+    if position_input == BUTTON_POSITION_MANUAL:
+        await message.answer(
+            "✍️ Введите вашу должность:",
+            reply_markup=types.ReplyKeyboardRemove()
+        )
+        await state.update_data(manual_position_input=True)
+        return
+    
+    # Убираем эмодзи из должности перед сохранением
+    if position_input == BUTTON_POSITION_MANAGER:
+        position = "Заведующий"
+    elif position_input == BUTTON_POSITION_PHARMACIST:
+        position = "Фармацевт"
+    else:
+        # Ручной ввод
+        data = await state.get_data()
+        if data.get('manual_position_input'):
+            position = position_input
+            if len(position) < 2:
+                await message.answer(POSITION_INVALID)
+                return
+            # Удаляем флаг ручного ввода
+            await state.update_data(manual_position_input=False)
+        else:
+            await message.answer(POSITION_INVALID)
+            return
+    
+    await state.update_data(position=position)
+    logger.info(f"Должность сохранена: {position}")
+    
+    # Проверяем, редактируем ли мы данные
+    data = await state.get_data()
+    if data.get('passport_front_file_id'):  # Если уже были загружены фото
+        await show_review_screen(message, state)
+    else:
+        # Используем разные сообщения для кнопки и ручного ввода
+        if data.get('manual_position_input') is False or position_input in [BUTTON_POSITION_MANAGER, BUTTON_POSITION_PHARMACIST]:
+            inn_request_text = POSITION_MANUAL_CONFIRMED.format(position=position) if data.get('manual_position_input') is False else POSITION_CONFIRMED.format(position=position)
+        else:
+            inn_request_text = POSITION_CONFIRMED.format(position=position)
+        
+        await message.answer(inn_request_text, reply_markup=types.ReplyKeyboardRemove())
         await state.set_state(RegistrationStates.entering_inn)
 
 
@@ -403,6 +522,9 @@ async def show_review_screen(message: types.Message, state: FSMContext):
     review_text = (
         REVIEW_HEADER +
         REVIEW_FIO.format(fio=data.get('fio', 'N/A')) +
+        REVIEW_PHARMACY_NAME.format(pharmacy_name=data.get('pharmacy_name', 'N/A')) +
+        REVIEW_PHARMACY_NUMBER.format(pharmacy_number=data.get('pharmacy_number', 'N/A')) +
+        REVIEW_POSITION.format(position=data.get('position', 'N/A')) +
         REVIEW_INN.format(inn=data.get('inn', 'N/A')) +
         REVIEW_PHONE.format(phone=data.get('phone', 'N/A')) +
         REVIEW_CURATOR.format(curator=data.get('curator', 'N/A')) +
@@ -492,7 +614,9 @@ async def process_review_action(message: types.Message, state: FSMContext):
         edit_keyboard = ReplyKeyboardMarkup(
             keyboard=[
                 [KeyboardButton(text=BUTTON_FIO), KeyboardButton(text=BUTTON_INN)],
-                [KeyboardButton(text=BUTTON_PHONE), KeyboardButton(text=BUTTON_CURATOR)],
+                [KeyboardButton(text=BUTTON_PHARMACY_NAME), KeyboardButton(text=BUTTON_PHARMACY_NUMBER)],
+                [KeyboardButton(text=BUTTON_POSITION), KeyboardButton(text=BUTTON_PHONE)],
+                [KeyboardButton(text=BUTTON_CURATOR)],
                 [KeyboardButton(text="📸 Паспорт (лицевая)"), KeyboardButton(text="📸 Паспорт (обратная)")],
                 [KeyboardButton(text="🎓 Диплом")],
                 [KeyboardButton(text=BUTTON_BACK)]
@@ -519,6 +643,24 @@ async def process_edit_choice(message: types.Message, state: FSMContext):
     if choice == BUTTON_FIO:
         await message.answer(FIO_REQUEST)
         await state.set_state(RegistrationStates.entering_fio)
+    elif choice == BUTTON_PHARMACY_NAME:
+        await message.answer(PHARMACY_NAME_REQUEST)
+        await state.set_state(RegistrationStates.entering_pharmacy_name)
+    elif choice == BUTTON_PHARMACY_NUMBER:
+        await message.answer(PHARMACY_NUMBER_REQUEST)
+        await state.set_state(RegistrationStates.entering_pharmacy_number)
+    elif choice == BUTTON_POSITION:
+        position_keyboard = ReplyKeyboardMarkup(
+            keyboard=[
+                [KeyboardButton(text=BUTTON_POSITION_MANAGER)],
+                [KeyboardButton(text=BUTTON_POSITION_PHARMACIST)],
+                [KeyboardButton(text=BUTTON_POSITION_MANUAL)]
+            ],
+            resize_keyboard=True,
+            one_time_keyboard=True
+        )
+        await message.answer(POSITION_REQUEST, reply_markup=position_keyboard)
+        await state.set_state(RegistrationStates.choosing_position)
     elif choice == BUTTON_INN:
         await message.answer(INN_REQUEST)
         await state.set_state(RegistrationStates.entering_inn)

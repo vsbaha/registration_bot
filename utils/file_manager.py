@@ -90,6 +90,9 @@ def save_user_info(
     content = f"""ИНФОРМАЦИЯ О УЧАСТНИКЕ
 ======================
 ФИО: {data.get('fio', 'N/A')}
+Аптека: {data.get('pharmacy_name', 'N/A')}
+Номер аптеки: {data.get('pharmacy_number', 'N/A')}
+Должность: {data.get('position', 'N/A')}
 ИНН: {data.get('inn', 'N/A')}
 Телефон: {data.get('phone', 'N/A')}
 Куратор: {data.get('curator', 'N/A')}

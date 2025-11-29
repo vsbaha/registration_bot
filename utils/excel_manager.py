@@ -23,7 +23,10 @@ def create_or_update_curator_excel(
     phone: str,
     curator_number: int,
     total_number: int,
-    user_folder_path: str
+    user_folder_path: str,
+    pharmacy_name: str = "",
+    pharmacy_number: str = "",
+    position: str = ""
 ) -> bool:
     """
     Создает или обновляет Excel файл куратора с новым участником
@@ -45,7 +48,7 @@ def create_or_update_curator_excel(
             ws.title = curator
             
             # Создаем заголовки (без колонны "Путь")
-            headers = ["№", "Общий №", "ФИО", "ИНН", "Телефон", "Дата регистрации"]
+            headers = ["№", "Общий №", "ФИО", "Аптека", "Номер аптеки", "Должность", "ИНН", "Телефон", "Дата регистрации"]
             
             # Стили для заголовков
             header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
@@ -71,9 +74,12 @@ def create_or_update_curator_excel(
             ws.column_dimensions['A'].width = 6
             ws.column_dimensions['B'].width = 10
             ws.column_dimensions['C'].width = 25
-            ws.column_dimensions['D'].width = 15
-            ws.column_dimensions['E'].width = 15
-            ws.column_dimensions['F'].width = 20
+            ws.column_dimensions['D'].width = 25
+            ws.column_dimensions['E'].width = 12
+            ws.column_dimensions['F'].width = 15
+            ws.column_dimensions['G'].width = 15
+            ws.column_dimensions['H'].width = 15
+            ws.column_dimensions['I'].width = 20
             
             next_row = 2
         
@@ -90,6 +96,9 @@ def create_or_update_curator_excel(
             curator_number,                          # №
             total_number,                            # Общий №
             fio,                                     # ФИО
+            pharmacy_name or "",                     # Аптека
+            pharmacy_number or "",                   # Номер аптеки
+            position or "",                          # Должность
             inn,                                     # ИНН
             phone,                                   # Телефон
             datetime.now().strftime("%d.%m.%Y %H:%M"),  # Дата регистрации
@@ -140,7 +149,10 @@ def create_or_update_general_excel(
     phone: str,
     curator: str,
     total_number: int,
-    curator_number: int
+    curator_number: int,
+    pharmacy_name: str = "",
+    pharmacy_number: str = "",
+    position: str = ""
 ) -> bool:
     """
     Создает или обновляет общий Excel файл со всеми участниками
@@ -162,7 +174,7 @@ def create_or_update_general_excel(
             ws.title = "Участники"
             
             # Создаем заголовки
-            headers = ["Общий №", "№ у куратора", "ФИО", "ИНН", "Телефон", "Куратор", "Дата регистрации"]
+            headers = ["Общий №", "№ у куратора", "ФИО", "Аптека", "Номер аптеки", "Должность", "ИНН", "Телефон", "Куратор", "Дата регистрации"]
             
             # Стили для заголовков
             header_fill = PatternFill(start_color="2F5496", end_color="2F5496", fill_type="solid")
@@ -188,10 +200,13 @@ def create_or_update_general_excel(
             ws.column_dimensions['A'].width = 12
             ws.column_dimensions['B'].width = 12
             ws.column_dimensions['C'].width = 25
-            ws.column_dimensions['D'].width = 15
-            ws.column_dimensions['E'].width = 15
+            ws.column_dimensions['D'].width = 25
+            ws.column_dimensions['E'].width = 12
             ws.column_dimensions['F'].width = 15
-            ws.column_dimensions['G'].width = 20
+            ws.column_dimensions['G'].width = 15
+            ws.column_dimensions['H'].width = 15
+            ws.column_dimensions['I'].width = 15
+            ws.column_dimensions['J'].width = 20
             
             next_row = 2
         
@@ -208,6 +223,9 @@ def create_or_update_general_excel(
             total_number,                            # Общий №
             curator_number,                          # № у куратора
             fio,                                     # ФИО
+            pharmacy_name or "",                     # Аптека
+            pharmacy_number or "",                   # Номер аптеки
+            position or "",                          # Должность
             inn,                                     # ИНН
             phone,                                   # Телефон
             curator,                                 # Куратор

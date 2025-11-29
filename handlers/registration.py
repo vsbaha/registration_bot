@@ -78,6 +78,9 @@ async def send_to_groups(
             total_number=total_number,
             curator_number=curator_number,
             fio=user_data.get('fio'),
+            pharmacy_name=user_data.get('pharmacy_name', ''),
+            pharmacy_number=user_data.get('pharmacy_number', ''),
+            position=user_data.get('position', ''),
             inn=user_data.get('inn'),
             phone=user_data.get('phone'),
             curator=curator
@@ -144,6 +147,9 @@ async def send_to_groups(
         curator_msg = CURATOR_GROUP_MESSAGE.format(
             curator_number=curator_number,
             fio=user_data.get('fio'),
+            pharmacy_name=user_data.get('pharmacy_name', ''),
+            pharmacy_number=user_data.get('pharmacy_number', ''),
+            position=user_data.get('position', ''),
             inn=user_data.get('inn'),
             phone=user_data.get('phone')
         )
@@ -214,7 +220,10 @@ async def finalize_registration(
             phone=user_data.get('phone'),
             curator_number=curator_number,
             total_number=total_number,
-            user_folder_path=str(user_path)
+            user_folder_path=str(user_path),
+            pharmacy_name=user_data.get('pharmacy_name', ''),
+            pharmacy_number=user_data.get('pharmacy_number', ''),
+            position=user_data.get('position', '')
         )
         if excel_ok:
             logger.info(f"Excel файл куратора {curator} обновлен")
@@ -228,7 +237,10 @@ async def finalize_registration(
             phone=user_data.get('phone'),
             curator=curator,
             total_number=total_number,
-            curator_number=curator_number
+            curator_number=curator_number,
+            pharmacy_name=user_data.get('pharmacy_name', ''),
+            pharmacy_number=user_data.get('pharmacy_number', ''),
+            position=user_data.get('position', '')
         )
         if general_excel_ok:
             logger.info("Общий Excel файл обновлен")
